@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Posture OS v4.0</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Posture OS">
+    <link rel="apple-touch-icon" href="https://via.placeholder.com/192x192/000000/00e676?text=OS">
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #050505; color: white; font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; }
+        .camera-wrapper { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        video, canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; transform-origin: center center; transition: transform 0.1s ease; }
+        canvas { z-index: 2; }
+        
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 40px 20px 20px 20px; box-sizing: border-box; }
+        #header { text-align: center; background: rgba(0, 0, 0, 0.85); padding: 12px; border-radius: 12px; border: 1px solid #222; }
+        h1 { margin: 0; font-size: 18px; letter-spacing: 3px; color: #fff; }
+        .subtitle { font-size: 9px; color: #00e676; margin-top: 3px; font-weight: bold; }
+        
+        #control-panel { background: rgba(0, 0, 0, 0.9); padding: 15px; border-radius: 14px; border: 1px solid #333; pointer-events: auto; display: flex; flex-direction: column; gap: 10px; }
+        .row { display: flex; gap: 8px; justify-content: space-between; align-items: center; }
+        select { background: #111; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; font-size: 12px; width: 50%; }
+        button { background: #00e676; color: black; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; width: 48%; cursor: pointer; }
+        .btn-scan { background: #00b0ff; color: white; }
+        
+        .adj-box { display: flex; background: #111; padding: 8px; border-radius: 8px; border: 1px solid #333; gap: 10px; align-items: center; width: 100%; box-sizing: border-box; }
+        .adj-label { font-size: 10px; color: #aaa; white-space: nowrap; }
+        .slider { flex-grow: 1; -webkit-appearance: none; background: #333; height: 6px; border-radius: 3px; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; background: #00e676; width: 16px; height: 16px; border-radius: 50%; }
+        .btn-toggle { background: #333; color: white; width: auto; padding: 5px 10px; font-size: 10px; border: 1px solid #555; }
+        
+        #overlay-display { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); z-index: 4; font-size: 70px; font-weight: 900; text-align: center; text-shadow: 0 0 25px rgba(0,0,0,1); pointer-events: none; display: none; }
+        #status-box { font-size: 18px; font-weight: bold; text-align: center; padding: 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.85); border: 2px solid #444; }
+        .status-perfect { color: #00e676; border-color: #00e676 !important; }
+        .status-error { color: #ff1744; border-color: #ff1744 !important; background: rgba(255, 0, 0, 0.1) !important; }
+        .status-scanning { color: #00b0ff; border-color: #00b0ff !important; }
+        
+        #metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; background: rgba(0, 0, 0, 0.85); padding: 10px; border-radius: 10px; border: 1px solid #222; }
+        .metric { text-align: center; font-size: 9px; color: #aaa; }
+        .metric span { display: block; font-size: 13px; font-weight: bold; margin-top: 3px; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="camera-wrapper">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+    
+    <div id="overlay-display">10</div>
+    
+    <div id="ui-layer">
+        <div id="header">
+            <h1>HUMAN POSTURE OS</h1>
+            <div class="subtitle">KITAJIMA FIELD ENGINE v4.0</div>
+        </div>
+        
+        <div id="control-panel">
+            <div class="adj-box">
+                <span class="adj-label">ズーム (引き)</span>
+                <input type="range" id="zoom-slider" class="slider" min="0.6" max="2.0" step="0.1" value="1.0" oninput="updateCameraTransform()">
+                <button class="btn-toggle" id="mirror-btn" onclick="toggleMirror()">反転切替</button>
+            </div>
+            
+            <div class="row">
+                <select id="mode-select" onchange="switchMode()">
+                    <option value="custom">カスタム（5レップ計測）</option>
+                    <option value="hip">簡単：ヒップアップ</option>
+                    <option value="bulk">簡単：レッグバルクアップ</option>
+                    <option value="athlete">簡単：アスリート</option>
+                </select>
+                <button id="action-btn" class="btn-scan" onclick="startScanSequence()">スキャン開始</button>
+            </div>
+        </div>
+        
+        <div id="status-box">モードを選択して開始してください</div>
+        
+        <div id="metrics">
+            <div class="metric">胸尻重心比 (COG)<span><b id="m-cog">-</b> / <i id="t-cog">未設定</i></span></div>
+            <div class="metric">体幹固定 (Spine)<span id="m-spine">-</span></div>
+            <div class="metric">足首・尻バランス<span id="m-ankle">-</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const videoElement = document.getElementById('video');
+    const canvasElement = document.getElementById('canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const statusBox = document.getElementById('status-box');
+    const overlayDisplay = document.getElementById('overlay-display');
+    const modeSelect = document.getElementById('mode-select');
+    const actionBtn = document.getElementById('action-btn');
+    const zoomSlider = document.getElementById('zoom-slider');
+    
+    const mCog = document.getElementById('m-cog');
+    const tCog = document.getElementById('t-cog');
+    const mSpine = document.getElementById('m-spine');
+    const mAnkle = document.getElementById('m-ankle');
+
+    let appState = "idle"; 
+    let currentMode = "custom";
+    let countdownValue = 10;
+    let repCount = 0;
+    let isBottomZone = false;
+    let scalledDataSamples = [];
+    let isAiProcessing = false; 
+    let isMirrored = false; 
+    let zoomScale = 1.0;
+
+    let activeTarget = { cogMin: 0.45, cogMax: 0.55, spineAngleMin: 75, ankleTolerant: 0.05 };
+
+    const presets = {
+        hip: { name: "ヒップアップ", cogMin: 0.32, cogMax: 0.44, spineAngleMin: 65, ankleTolerant: 0.03, label: "0.32 - 0.44" },
+        bulk: { name: "レッグバルクアップ", cogMin: 0.56, cogMax: 0.68, spineAngleMin: 85, ankleTolerant: 0.08, label: "0.56 - 0.68" },
+        athlete: { name: "アスリート", cogMin: 0.46, cogMax: 0.54, spineAngleMin: 75, ankleTolerant: 0.05, label: "0.46 - 0.54" }
+    };
+
+    function updateCameraTransform() {
+        zoomScale = zoomSlider.value;
+        const hFlip = isMirrored ? -1 : 1;
+        videoElement.style.transform = `scale(${hFlip * zoomScale}, ${zoomScale})`;
+        canvasElement.style.transform = `scale(${hFlip * zoomScale}, ${zoomScale})`;
+    }
+
+    function toggleMirror() {
+        isMirrored = !isMirrored;
+        updateCameraTransform();
+    }
+
+    function calculateAngle(a, b, c) {
+        const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+        let angle = Math.abs(radians * 180.0 / Math.PI);
+        if (angle > 180.0) angle = 360 - angle;
+        return angle;
+    }
+
+    function switchMode() {
+        currentMode = modeSelect.value;
+        if (currentMode === "custom") {
+            actionBtn.innerText = "スキャン開始";
+            actionBtn.className = "btn-scan";
+            tCog.innerText = "未設定";
+            statusBox.innerText = "5レップスキャンであなたの正解をインプットします";
+            statusBox.className = "";
+            appState = "idle";
+        } else {
+            actionBtn.innerText = "システム稼働中";
+            actionBtn.className = "";
+            activeTarget = presets[currentMode];
+            tCog.innerText = presets[currentMode].label;
+            statusBox.innerText = `簡単設定：【${presets[currentMode].name}】監視中`;
+            statusBox.className = "status-perfect";
+            appState = "active";
+        }
+    }
+
+    function startScanSequence() {
+        if (currentMode !== "custom" || appState === "countdown" || appState === "scanning") return;
+        appState = "countdown";
+        countdownValue = 10;
+        repCount = 0;
+        scalledDataSamples = [];
+        overlayDisplay.innerText = countdownValue;
+        overlayDisplay.style.display = "block";
+        overlayDisplay.style.color = "#00b0ff";
+        statusBox.innerText = "AIスリープ中。セットアップを確認してください";
+        statusBox.className = "status-scanning";
+        
+        const timer = setInterval(() => {
+            countdownValue--;
+            if (countdownValue > 0) {
+                overlayDisplay.innerText = countdownValue;
+            } else if (countdownValue === 0) {
+                overlayDisplay.innerText = "START";
+                overlayDisplay.style.color = "#00e676";
+                statusBox.innerText = "AI起動！スクワットを5レップ行ってください";
+                appState = "scanning";
+            } else {
+                clearInterval(timer);
+                overlayDisplay.innerText = "REP 0";
+            }
+        }, 1000);
+    }
+
+    function onResults(results) {
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+        if (results.poseLandmarks) {
+            drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: 'rgba(255,255,255,0.25)', lineWidth: 1});
+            drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#00e676', lineWidth: 1, radius: 1.5});
+
+            const ear = results.poseLandmarks[8];
+            const shoulder = results.poseLandmarks[12];
+            const hip = results.poseLandmarks[24];
+            const knee = results.poseLandmarks[26];
+            
+            const rawAnkle = results.poseLandmarks[28];
+            const rawHeel = results.poseLandmarks[30];
+            const rawToe = results.poseLandmarks[32];
+
+            if (shoulder.visibility > 0.5 && hip.visibility > 0.5 && knee.visibility > 0.5) {
+                
+                const ankle = (rawAnkle && rawAnkle.visibility > 0.3) ? rawAnkle : { x: knee.x, y: knee.y + (hip.y - shoulder.y) * 0.5 };
+                const heel = (rawHeel && rawHeel.visibility > 0.3) ? rawHeel : { x: ankle.x - 0.05, y: ankle.y };
+                const toe = (rawToe && rawToe.visibility > 0.3) ? rawToe : { x: ankle.x + 0.08, y: ankle.y };
+
+                const upperBodyCogX = (shoulder.x + hip.x) / 2;
+                const footLength = Math.abs(toe.x - heel.x);
+                
+                const isFacingRight = toe.x < heel.x; 
+                let currentRatio = isFacingRight ? (heel.x - upperBodyCogX) / footLength : (upperBodyCogX - heel.x) / footLength;
+                
+                if (isMirrored) {
+                    currentRatio = 1.0 - currentRatio;
+                }
+
+                if (currentRatio < 0) currentRatio = 0;
+                if (currentRatio > 1) currentRatio = 1;
+                mCog.innerText = currentRatio.toFixed(2);
+
+                const torsoAngle = calculateAngle(shoulder, hip, knee);
+                const spineLine = calculateAngle(ear, shoulder, hip);   
+                let isSpineOk = spineLine > 150 && torsoAngle > 50;   
+                mSpine.innerText = isSpineOk ? "固定 (OK)" : "エラー";
+                mSpine.style.color = isSpineOk ? "#00e676" : "#ff1744";
+
+                const ankleAngle = calculateAngle(knee, ankle, heel); 
+                const hipOutDistance = isFacingRight ? (hip.x - toe.x) : (toe.x - hip.x);
+                let isNotHeelWeighted = true;
+                if (ankleAngle > 70 && hipOutDistance > 0.08) { 
+                    const chestForward = isFacingRight ? (hip.x - shoulder.x) : (shoulder.x - hip.x);
+                    if (chestForward < 0.04) isNotHeelWeighted = false;
+                }
+                mAnkle.innerText = isNotHeelWeighted ? "つま先重心" : "かかと脱落";
+                mAnkle.style.color = isNotHeelWeighted ? "#00e676" : "#ff1744";
+
+                const squatDepth = Math.abs(hip.y - knee.y);
+
+                if (appState === "scanning") {
+                    if (squatDepth < 0.35) { 
+                        if (isSpineOk && isNotHeelWeighted) {
+                            scalledDataSamples.push({ ratio: currentRatio });
+                        }
+                        isBottomZone = true;
+                    } else if (squatDepth > 0.44 && isBottomZone) { 
+                        isBottomZone = false;
+                        repCount++;
+                        overlayDisplay.innerText = "REP " + repCount;
+
+                        if (repCount >= 5) {
+                            appState = "active";
+                            overlayDisplay.style.display = "none";
+                            
+                            if (scalledDataSamples.length > 0) {
+                                const sumRatio = scalledDataSamples.reduce((acc, d) => acc + d.ratio, 0);
+                                const avgRatio = sumRatio / scalledDataSamples.length;
+                                activeTarget = { cogMin: avgRatio - 0.06, cogMax: avgRatio + 0.06 }; 
+                                tCog.innerText = `${activeTarget.cogMin.toFixed(2)}-${activeTarget.cogMax.toFixed(2)}`;
+                                statusBox.innerText = "スキャン完了！監視モードに移行します";
+                                statusBox.className = "status-perfect";
+                            } else {
+                                appState = "idle";
+                                statusBox.innerText = "データ不足。もう一度スキャンしてください。";
+                                statusBox.className = "";
+                                switchMode();
+                            }
+                        }
+                    }
+                } 
+                else if (appState === "active") {
+                    if (squatDepth < 0.35) { 
+                        const isCogOk = currentRatio >= activeTarget.cogMin && currentRatio <= activeTarget.cogMax;
+                        if (isCogOk && isSpineOk && isNotHeelWeighted) {
+                            statusBox.innerText = "PERFECT: 欧米式OS完全稼働中";
+                            statusBox.className = "status-perfect";
+                        } else {
+                            statusBox.innerText = "WARNING: フォームが退化しています";
+                            statusBox.className = "status-error";
+                            canvasCtx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                            canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+                        }
+                    } else {
+                        statusBox.innerText = "SQUAT DOWN...";
+                        statusBox.className = "";
+                    }
+                }
+            }
+        }
+        canvasCtx.restore();
+    }
+
+    const pose = new Pose({locateFile: (file) => { return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`; }});
+    pose.setOptions({ modelComplexity: 0, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    pose.onResults(onResults);
+
+    async function startCamera() {
+        const constraints = {
+            video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 640 } },
+            audio: false
+        };
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoElement.srcObject = stream;
+            videoElement.addEventListener('loadedmetadata', () => {
+                videoElement.play();
+                updateCameraTransform(); 
+                setTimeout(processVideo, 75);
+            });
+        } catch (err) {
+            statusBox.innerText = "CAMERA ERROR";
+        }
+    }
+
+    async function processVideo() {
+        if (videoElement.paused || videoElement.ended) {
+            setTimeout(processVideo, 100);
+            return;
+        }
+        if (appState === "countdown") {
+            setTimeout(processVideo, 75);
+            return;
+        }
+        if (videoElement.readyState >= 2 && !isAiProcessing) {
+            isAiProcessing = true;
+            try {
+                await pose.send({image: videoElement});
+            } catch (e) {
+                console.error(e);
+            }
+            isAiProcessing = false;
+        }
+        setTimeout(processVideo, 75);
+    }
+    startCamera();
+</script>
+</body>
+</html>
