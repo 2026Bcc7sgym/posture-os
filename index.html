@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Posture OS v4.0</title>
+    <title>Posture OS v4.1</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,6 +36,10 @@
         .btn-toggle { background: #333; color: white; width: auto; padding: 5px 10px; font-size: 10px; border: 1px solid #555; }
         
         #overlay-display { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); z-index: 4; font-size: 70px; font-weight: 900; text-align: center; text-shadow: 0 0 25px rgba(0,0,0,1); pointer-events: none; display: none; }
+        
+        #big-alert { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); z-index: 5; background: rgba(255, 23, 68, 0.98); color: white; padding: 25px 45px; border-radius: 16px; font-size: 26px; font-weight: 900; letter-spacing: 2px; box-shadow: 0 0 40px rgba(255, 23, 68, 0.8); border: 3px solid #fff; text-align: center; white-space: nowrap; display: none; pointer-events: none; animation: alert-pulse 0.8s infinite; }
+        @keyframes alert-pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.06); } 100% { transform: translate(-50%, -50%) scale(1); } }
+
         #status-box { font-size: 18px; font-weight: bold; text-align: center; padding: 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.85); border: 2px solid #444; }
         .status-perfect { color: #00e676; border-color: #00e676 !important; }
         .status-error { color: #ff1744; border-color: #ff1744 !important; background: rgba(255, 0, 0, 0.1) !important; }
@@ -53,17 +57,18 @@
     <canvas id="canvas"></canvas>
     
     <div id="overlay-display">10</div>
+    <div id="big-alert">WARNING<br>フォーム退化！</div>
     
     <div id="ui-layer">
         <div id="header">
             <h1>HUMAN POSTURE OS</h1>
-            <div class="subtitle">KITAJIMA FIELD ENGINE v4.0</div>
+            <div class="subtitle">KITAJIMA COG ENGINE v4.1</div>
         </div>
         
         <div id="control-panel">
             <div class="adj-box">
-                <span class="adj-label">ズーム (引き)</span>
-                <input type="range" id="zoom-slider" class="slider" min="0.6" max="2.0" step="0.1" value="1.0" oninput="updateCameraTransform()">
+                <span class="adj-label">画角・引き調整</span>
+                <input type="range" id="zoom-slider" class="slider" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateCameraTransform()">
                 <button class="btn-toggle" id="mirror-btn" onclick="toggleMirror()">反転切替</button>
             </div>
             
@@ -94,6 +99,7 @@
     const canvasCtx = canvasElement.getContext('2d');
     const statusBox = document.getElementById('status-box');
     const overlayDisplay = document.getElementById('overlay-display');
+    const bigAlert = document.getElementById('big-alert');
     const modeSelect = document.getElementById('mode-select');
     const actionBtn = document.getElementById('action-btn');
     const zoomSlider = document.getElementById('zoom-slider');
@@ -148,6 +154,7 @@
             tCog.innerText = "未設定";
             statusBox.innerText = "5レップスキャンであなたの正解をインプットします";
             statusBox.className = "";
+            bigAlert.style.display = "none";
             appState = "idle";
         } else {
             actionBtn.innerText = "システム稼働中";
@@ -156,6 +163,7 @@
             tCog.innerText = presets[currentMode].label;
             statusBox.innerText = `簡単設定：【${presets[currentMode].name}】監視中`;
             statusBox.className = "status-perfect";
+            bigAlert.style.display = "none";
             appState = "active";
         }
     }
@@ -171,6 +179,7 @@
         overlayDisplay.style.color = "#00b0ff";
         statusBox.innerText = "AIスリープ中。セットアップを確認してください";
         statusBox.className = "status-scanning";
+        bigAlert.style.display = "none";
         
         const timer = setInterval(() => {
             countdownValue--;
@@ -229,7 +238,7 @@
 
                 const torsoAngle = calculateAngle(shoulder, hip, knee);
                 const spineLine = calculateAngle(ear, shoulder, hip);   
-                let isSpineOk = spineLine > 150 && torsoAngle > 50;   
+                let isSpineOk = spineLine > 148 && torsoAngle > 45;   
                 mSpine.innerText = isSpineOk ? "固定 (OK)" : "エラー";
                 mSpine.style.color = isSpineOk ? "#00e676" : "#ff1744";
 
@@ -246,12 +255,12 @@
                 const squatDepth = Math.abs(hip.y - knee.y);
 
                 if (appState === "scanning") {
-                    if (squatDepth < 0.35) { 
+                    if (torsoAngle < 135) { 
                         if (isSpineOk && isNotHeelWeighted) {
                             scalledDataSamples.push({ ratio: currentRatio });
                         }
                         isBottomZone = true;
-                    } else if (squatDepth > 0.44 && isBottomZone) { 
+                    } else if (torsoAngle > 155 && isBottomZone) { 
                         isBottomZone = false;
                         repCount++;
                         overlayDisplay.innerText = "REP " + repCount;
@@ -263,7 +272,7 @@
                             if (scalledDataSamples.length > 0) {
                                 const sumRatio = scalledDataSamples.reduce((acc, d) => acc + d.ratio, 0);
                                 const avgRatio = sumRatio / scalledDataSamples.length;
-                                activeTarget = { cogMin: avgRatio - 0.06, cogMax: avgRatio + 0.06 }; 
+                                activeTarget = { cogMin: avgRatio - 0.07, cogMax: avgRatio + 0.07 }; 
                                 tCog.innerText = `${activeTarget.cogMin.toFixed(2)}-${activeTarget.cogMax.toFixed(2)}`;
                                 statusBox.innerText = "スキャン完了！監視モードに移行します";
                                 statusBox.className = "status-perfect";
@@ -277,20 +286,24 @@
                     }
                 } 
                 else if (appState === "active") {
-                    if (squatDepth < 0.35) { 
+                    if (torsoAngle < 138) { 
                         const isCogOk = currentRatio >= activeTarget.cogMin && currentRatio <= activeTarget.cogMax;
                         if (isCogOk && isSpineOk && isNotHeelWeighted) {
                             statusBox.innerText = "PERFECT: 欧米式OS完全稼働中";
                             statusBox.className = "status-perfect";
+                            bigAlert.style.display = "none"; 
                         } else {
                             statusBox.innerText = "WARNING: フォームが退化しています";
                             statusBox.className = "status-error";
-                            canvasCtx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                            
+                            bigAlert.style.display = "block";
+                            canvasCtx.fillStyle = "rgba(255, 0, 0, 0.25)";
                             canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
                         }
                     } else {
                         statusBox.innerText = "SQUAT DOWN...";
                         statusBox.className = "";
+                        bigAlert.style.display = "none";
                     }
                 }
             }
