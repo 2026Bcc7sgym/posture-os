@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Posture OS v4.1</title>
+    <title>Posture OS v6.0</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Posture OS">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="https://via.placeholder.com/192x192/000000/00e676?text=OS">
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -29,18 +30,28 @@
         button { background: #00e676; color: black; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; width: 48%; cursor: pointer; }
         .btn-scan { background: #00b0ff; color: white; }
         
-        .adj-box { display: flex; background: #111; padding: 8px; border-radius: 8px; border: 1px solid #333; gap: 10px; align-items: center; width: 100%; box-sizing: border-box; }
+        .adj-box { display: flex; background: #111; padding: 8px; border-radius: 8px; border: 1px solid #333; gap: 6px; align-items: center; width: 100%; box-sizing: border-box; }
         .adj-label { font-size: 10px; color: #aaa; white-space: nowrap; }
-        .slider { flex-grow: 1; -webkit-appearance: none; background: #333; height: 6px; border-radius: 3px; }
+        .slider { flex-grow: 1; -webkit-appearance: none; background: #333; height: 6px; border-radius: 3px; width: 30%; }
         .slider::-webkit-slider-thumb { -webkit-appearance: none; background: #00e676; width: 16px; height: 16px; border-radius: 50%; }
-        .btn-toggle { background: #333; color: white; width: auto; padding: 5px 10px; font-size: 10px; border: 1px solid #555; }
+        .btn-toggle { background: #333; color: white; width: auto; padding: 6px 8px; font-size: 10px; border: 1px solid #555; border-radius: 6px; white-space: nowrap; }
+        .btn-cam-switch { background: #00b0ff; color: white; border: 1px solid #00b0ff; }
         
         #overlay-display { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); z-index: 4; font-size: 70px; font-weight: 900; text-align: center; text-shadow: 0 0 25px rgba(0,0,0,1); pointer-events: none; display: none; }
         
-        #big-alert { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); z-index: 5; background: rgba(255, 23, 68, 0.98); color: white; padding: 25px 45px; border-radius: 16px; font-size: 26px; font-weight: 900; letter-spacing: 2px; box-shadow: 0 0 40px rgba(255, 23, 68, 0.8); border: 3px solid #fff; text-align: center; white-space: nowrap; display: none; pointer-events: none; animation: alert-pulse 0.8s infinite; }
-        @keyframes alert-pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.06); } 100% { transform: translate(-50%, -50%) scale(1); } }
+        #big-alert { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); z-index: 5; background: rgba(255, 23, 68, 0.98); color: white; padding: 25px 35px; border-radius: 16px; font-size: 22px; font-weight: 900; letter-spacing: 1px; box-shadow: 0 0 40px rgba(255, 23, 68, 0.8); border: 3px solid #fff; text-align: center; white-space: nowrap; display: none; pointer-events: none; animation: alert-pulse 0.8s infinite; line-height: 1.4; }
+        @keyframes alert-pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.04); } 100% { transform: translate(-50%, -50%) scale(1); } }
 
-        #status-box { font-size: 18px; font-weight: bold; text-align: center; padding: 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.85); border: 2px solid #444; }
+        #analytics-report { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 6; background: rgba(10, 10, 10, 0.98); border: 2px solid #00e676; width: 90%; max-width: 360px; padding: 20px; border-radius: 16px; box-shadow: 0 0 30px rgba(0, 230, 118, 0.3); display: none; pointer-events: auto; }
+        .report-title { font-size: 18px; font-weight: 900; text-align: center; color: #00e676; letter-spacing: 1px; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 8px; }
+        .best-rep-box { background: #111; padding: 10px; border-radius: 8px; border: 1px solid #222; text-align: center; margin-bottom: 15px; font-size: 14px; }
+        .best-rep-num { font-size: 20px; font-weight: 900; color: #00b0ff; }
+        .feedback-item { margin-bottom: 10px; font-size: 12px; line-height: 1.5; }
+        .feedback-label { font-weight: bold; color: #fff; display: flex; justify-content: space-between; }
+        .feedback-desc { color: #aaa; margin-top: 2px; padding-left: 5px; border-left: 2px solid #444; }
+        .btn-close-report { background: #fff; color: #000; width: 100%; padding: 10px; border-radius: 8px; font-weight: bold; border: none; margin-top: 10px; cursor: pointer; }
+
+        #status-box { font-size: 14px; font-weight: bold; text-align: center; padding: 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.85); border: 2px solid #444; }
         .status-perfect { color: #00e676; border-color: #00e676 !important; }
         .status-error { color: #ff1744; border-color: #ff1744 !important; background: rgba(255, 0, 0, 0.1) !important; }
         .status-scanning { color: #00b0ff; border-color: #00b0ff !important; }
@@ -58,32 +69,54 @@
     
     <div id="overlay-display">10</div>
     <div id="big-alert">WARNING<br>フォーム退化！</div>
+
+    <div id="analytics-report">
+        <div class="report-title">KITAJIMA COG REPORT</div>
+        <div class="best-rep-box">
+            <span>BEST REP: </span><span id="rep-best-num" class="best-rep-num">第 - レップ</span>
+            <div style="font-size: 10px; color: #aaa; margin-top: 3px;">総合フォーム適合率: <b id="rep-best-score" style="color:#00e676;">-%</b></div>
+        </div>
+        <div class="feedback-item">
+            <div class="feedback-label"><span>① 荷重バランス (COG)</span><span id="score-cog" style="color:#00e676;">-%</span></div>
+            <div id="desc-cog" class="feedback-desc">-</div>
+        </div>
+        <div class="feedback-item">
+            <div class="feedback-label"><span>② ヒップヒンジ (尻の引き)</span><span id="score-hinge" style="color:#00e676;">-%</span></div>
+            <div id="desc-hinge" class="feedback-desc">-</div>
+        </div>
+        <div class="feedback-item">
+            <div class="feedback-label"><span>③ 腹圧キープ (体幹固定)</span><span id="score-spine" style="color:#00e676;">-%</span></div>
+            <div id="desc-spine" class="feedback-desc">-</div>
+        </div>
+        <button class="btn-close-report" onclick="closeReport()">データを閉じて再挑戦</button>
+    </div>
     
     <div id="ui-layer">
         <div id="header">
             <h1>HUMAN POSTURE OS</h1>
-            <div class="subtitle">KITAJIMA COG ENGINE v4.1</div>
+            <div class="subtitle">VERTICAL ENGINE v6.0</div>
         </div>
         
         <div id="control-panel">
             <div class="adj-box">
-                <span class="adj-label">画角・引き調整</span>
+                <span class="adj-label">倍率</span>
                 <input type="range" id="zoom-slider" class="slider" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateCameraTransform()">
-                <button class="btn-toggle" id="mirror-btn" onclick="toggleMirror()">反転切替</button>
+                <button class="btn-toggle" id="mirror-btn" onclick="toggleMirror()">反転</button>
+                <button class="btn-toggle btn-cam-switch" id="cam-btn" onclick="switchCamera()">レンズ切替</button>
             </div>
             
             <div class="row">
                 <select id="mode-select" onchange="switchMode()">
-                    <option value="custom">カスタム（5レップ計測）</option>
+                    <option value="custom">カスタム（5レップ分析）</option>
                     <option value="hip">簡単：ヒップアップ</option>
                     <option value="bulk">簡単：レッグバルクアップ</option>
                     <option value="athlete">簡単：アスリート</option>
                 </select>
-                <button id="action-btn" class="btn-scan" onclick="startScanSequence()">スキャン開始</button>
+                <button id="action-btn" class="btn-scan" onclick="startScanSequence()">分析開始</button>
             </div>
         </div>
         
-        <div id="status-box">モードを選択して開始してください</div>
+        <div id="status-box">OS初期化中...</div>
         
         <div id="metrics">
             <div class="metric">胸尻重心比 (COG)<span><b id="m-cog">-</b> / <i id="t-cog">未設定</i></span></div>
@@ -100,6 +133,7 @@
     const statusBox = document.getElementById('status-box');
     const overlayDisplay = document.getElementById('overlay-display');
     const bigAlert = document.getElementById('big-alert');
+    const analyticsReport = document.getElementById('analytics-report');
     const modeSelect = document.getElementById('mode-select');
     const actionBtn = document.getElementById('action-btn');
     const zoomSlider = document.getElementById('zoom-slider');
@@ -119,12 +153,22 @@
     let isMirrored = false; 
     let zoomScale = 1.0;
 
+    let videoDevices = [];
+    let currentDeviceIdx = 0;
+    let currentStream = null;
+
+    let standingHipY = null;
+    let baselineCaptured = false;
+
+    let currentRepHistory = [];
+    let allRepsSummary = [];
+
     let activeTarget = { cogMin: 0.45, cogMax: 0.55, spineAngleMin: 75, ankleTolerant: 0.05 };
 
     const presets = {
-        hip: { name: "ヒップアップ", cogMin: 0.32, cogMax: 0.44, spineAngleMin: 65, ankleTolerant: 0.03, label: "0.32 - 0.44" },
-        bulk: { name: "レッグバルクアップ", cogMin: 0.56, cogMax: 0.68, spineAngleMin: 85, ankleTolerant: 0.08, label: "0.56 - 0.68" },
-        athlete: { name: "アスリート", cogMin: 0.46, cogMax: 0.54, spineAngleMin: 75, ankleTolerant: 0.05, label: "0.46 - 0.54" }
+        hip: { name: "ヒップアップ", cogMin: 0.32, cogMax: 0.44, label: "0.32 - 0.44" },
+        bulk: { name: "レッグバルクアップ", cogMin: 0.56, cogMax: 0.68, label: "0.56 - 0.68" },
+        athlete: { name: "アスリート", cogMin: 0.46, cogMax: 0.54, label: "0.46 - 0.54" }
     };
 
     function updateCameraTransform() {
@@ -148,11 +192,12 @@
 
     function switchMode() {
         currentMode = modeSelect.value;
+        analyticsReport.style.display = "none";
         if (currentMode === "custom") {
-            actionBtn.innerText = "スキャン開始";
+            actionBtn.innerText = "分析開始";
             actionBtn.className = "btn-scan";
             tCog.innerText = "未設定";
-            statusBox.innerText = "5レップスキャンであなたの正解をインプットします";
+            statusBox.innerText = "5レップ物理垂直スキャン。位置エネルギーの落差でジャッジします";
             statusBox.className = "";
             bigAlert.style.display = "none";
             appState = "idle";
@@ -174,21 +219,26 @@
         countdownValue = 10;
         repCount = 0;
         scalledDataSamples = [];
+        allRepsSummary = [];
+        currentRepHistory = [];
+        baselineCaptured = false; 
         overlayDisplay.innerText = countdownValue;
         overlayDisplay.style.display = "block";
         overlayDisplay.style.color = "#00b0ff";
-        statusBox.innerText = "AIスリープ中。セットアップを確認してください";
+        statusBox.innerText = "直立姿勢で待機してください。まもなくAIが初期位置をホールドします";
         statusBox.className = "status-scanning";
         bigAlert.style.display = "none";
+        analyticsReport.style.display = "none";
         
         const timer = setInterval(() => {
             countdownValue--;
             if (countdownValue > 0) {
                 overlayDisplay.innerText = countdownValue;
+                if(countdownValue === 2) statusBox.innerText = "まもなくホールド...動かないでください";
             } else if (countdownValue === 0) {
                 overlayDisplay.innerText = "START";
                 overlayDisplay.style.color = "#00e676";
-                statusBox.innerText = "AI起動！スクワットを5レップ行ってください";
+                statusBox.innerText = "物理上下動センサー稼働！尻を垂直に落としてください";
                 appState = "scanning";
             } else {
                 clearInterval(timer);
@@ -222,25 +272,37 @@
                 const heel = (rawHeel && rawHeel.visibility > 0.3) ? rawHeel : { x: ankle.x - 0.05, y: ankle.y };
                 const toe = (rawToe && rawToe.visibility > 0.3) ? rawToe : { x: ankle.x + 0.08, y: ankle.y };
 
+                const torsoLength = Math.abs(hip.y - shoulder.y);
+
+                if (appState === "countdown" && countdownValue <= 2 && !baselineCaptured) {
+                    standingHipY = hip.y;
+                    baselineCaptured = true;
+                }
+
+                const verticalDropRatio = standingHipY ? (hip.y - standingHipY) / torsoLength : 0;
+
                 const upperBodyCogX = (shoulder.x + hip.x) / 2;
                 const footLength = Math.abs(toe.x - heel.x);
                 
                 const isFacingRight = toe.x < heel.x; 
                 let currentRatio = isFacingRight ? (heel.x - upperBodyCogX) / footLength : (upperBodyCogX - heel.x) / footLength;
                 
-                if (isMirrored) {
-                    currentRatio = 1.0 - currentRatio;
-                }
-
+                if (isMirrored) currentRatio = 1.0 - currentRatio;
                 if (currentRatio < 0) currentRatio = 0;
                 if (currentRatio > 1) currentRatio = 1;
                 mCog.innerText = currentRatio.toFixed(2);
 
                 const torsoAngle = calculateAngle(shoulder, hip, knee);
                 const spineLine = calculateAngle(ear, shoulder, hip);   
-                let isSpineOk = spineLine > 148 && torsoAngle > 45;   
+                let isSpineOk = spineLine > 146;   
                 mSpine.innerText = isSpineOk ? "固定 (OK)" : "エラー";
                 mSpine.style.color = isSpineOk ? "#00e676" : "#ff1744";
+
+                const kneeForward = isFacingRight ? (toe.x - knee.x) : (knee.x - toe.x);
+                let hipHingeScore = 100;
+                if (torsoAngle < 150 && kneeForward < -0.02) {
+                    hipHingeScore = Math.max(40, Math.round(100 - Math.abs(kneeForward) * 400));
+                }
 
                 const ankleAngle = calculateAngle(knee, ankle, heel); 
                 const hipOutDistance = isFacingRight ? (hip.x - toe.x) : (toe.x - hip.x);
@@ -252,50 +314,68 @@
                 mAnkle.innerText = isNotHeelWeighted ? "つま先重心" : "かかと脱落";
                 mAnkle.style.color = isNotHeelWeighted ? "#00e676" : "#ff1744";
 
-                const squatDepth = Math.abs(hip.y - knee.y);
-
                 if (appState === "scanning") {
-                    if (torsoAngle < 135) { 
-                        if (isSpineOk && isNotHeelWeighted) {
-                            scalledDataSamples.push({ ratio: currentRatio });
-                        }
+                    if (torsoAngle < 145 && verticalDropRatio < 0.05) {
+                        bigAlert.innerHTML = "WARNING<br>お辞儀スクワット！<br>尻を落として！";
+                        bigAlert.style.display = "block";
+                        canvasCtx.fillStyle = "rgba(255, 0, 0, 0.25)";
+                        canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+                    } else {
+                        if(verticalDropRatio >= 0.05 && bigAlert.innerHTML.includes("お辞儀")) bigAlert.style.display = "none";
+                    }
+
+                    if (verticalDropRatio > 0.12) { 
                         isBottomZone = true;
-                    } else if (torsoAngle > 155 && isBottomZone) { 
+                        currentRepHistory.push({
+                            cog: currentRatio,
+                            spine: spineLine,
+                            hinge: hipHingeScore,
+                            isHeel: !isNotHeelWeighted
+                        });
+                    } 
+                    else if (verticalDropRatio < 0.03 && isBottomZone) { 
                         isBottomZone = false;
                         repCount++;
                         overlayDisplay.innerText = "REP " + repCount;
 
+                        if (currentRepHistory.length > 0) {
+                            let avgCog = currentRepHistory.reduce((acc, d) => acc + d.cog, 0) / currentRepHistory.length;
+                            let minSpine = Math.min(...currentRepHistory.map(d => d.spine));
+                            let minHinge = Math.min(...currentRepHistory.map(d => d.hinge));
+
+                            let cogScore = Math.max(0, 100 - Math.abs(avgCog - 0.45) * 400); 
+                            let spineScore = minSpine > 146 ? 100 : 50;
+                            let finalRepScore = Math.round((cogScore * 0.4) + (spineScore * 0.3) + (minHinge * 0.3));
+
+                            allRepsSummary.push({
+                                repNum: repCount,
+                                score: finalRepScore,
+                                cog: cogScore,
+                                hinge: minHinge,
+                                spine: spineScore,
+                                rawCog: avgCog
+                            });
+                        }
+                        currentRepHistory = [];
+
                         if (repCount >= 5) {
-                            appState = "active";
+                            appState = "idle";
                             overlayDisplay.style.display = "none";
-                            
-                            if (scalledDataSamples.length > 0) {
-                                const sumRatio = scalledDataSamples.reduce((acc, d) => acc + d.ratio, 0);
-                                const avgRatio = sumRatio / scalledDataSamples.length;
-                                activeTarget = { cogMin: avgRatio - 0.07, cogMax: avgRatio + 0.07 }; 
-                                tCog.innerText = `${activeTarget.cogMin.toFixed(2)}-${activeTarget.cogMax.toFixed(2)}`;
-                                statusBox.innerText = "スキャン完了！監視モードに移行します";
-                                statusBox.className = "status-perfect";
-                            } else {
-                                appState = "idle";
-                                statusBox.innerText = "データ不足。もう一度スキャンしてください。";
-                                statusBox.className = "";
-                                switchMode();
-                            }
+                            showAnalyticsReport();
                         }
                     }
                 } 
                 else if (appState === "active") {
-                    if (torsoAngle < 138) { 
+                    if (verticalDropRatio > 0.10) { 
                         const isCogOk = currentRatio >= activeTarget.cogMin && currentRatio <= activeTarget.cogMax;
-                        if (isCogOk && isSpineOk && isNotHeelWeighted) {
+                        if (isCogOk && isSpineOk && isNotHeelWeighted && hipHingeScore > 70) {
                             statusBox.innerText = "PERFECT: 欧米式OS完全稼働中";
                             statusBox.className = "status-perfect";
                             bigAlert.style.display = "none"; 
                         } else {
                             statusBox.innerText = "WARNING: フォームが退化しています";
                             statusBox.className = "status-error";
-                            
+                            bigAlert.innerHTML = "WARNING<br>フォーム退化！";
                             bigAlert.style.display = "block";
                             canvasCtx.fillStyle = "rgba(255, 0, 0, 0.25)";
                             canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
@@ -311,26 +391,106 @@
         canvasCtx.restore();
     }
 
+    function showAnalyticsReport() {
+        if (allRepsSummary.length === 0) return;
+        let bestRep = allRepsSummary.reduce((max, rep) => rep.score > max.score ? rep : max, allRepsSummary[0]);
+        
+        document.getElementById('rep-best-num').innerText = `第 ${bestRep.repNum} レップ`;
+        document.getElementById('rep-best-score').innerText = `${bestRep.score}点`;
+        
+        document.getElementById('score-cog').innerText = `${Math.round(bestRep.cog)}点`;
+        document.getElementById('score-hinge').innerText = `${Math.round(bestRep.hinge)}点`;
+        document.getElementById('score-spine').innerText = `${Math.round(bestRep.spine)}点`;
+
+        if (bestRep.cog >= 85) {
+            document.getElementById('desc-cog').innerText = "完璧。胸尻重心比が理想的なつま先寄りをキープ。最強の負荷が乗っています。";
+        } else if (bestRep.rawCog > 0.55) {
+            document.getElementById('desc-cog').innerText = "かかと側に軸が脱落しています。もっと上体を前に倒し、尻を後ろに突き出して。";
+        } else {
+            document.getElementById('desc-cog').innerText = "つま先を攻めすぎて膝が前に出ています。重心位置の微調整が必要です。";
+        }
+
+        if (bestRep.hinge >= 85) {
+            document.getElementById('desc-hinge').innerText = "極上のヒンジ。初動で膝を出さず、骨盤を強烈に折り畳めています。";
+        } else {
+            document.getElementById('desc-hinge').innerText = "膝主導（日本式）になっています。しゃがむ初動で1センチ先に尻を引け。";
+        }
+
+        if (bestRep.spine >= 85) {
+            document.getElementById('desc-spine').innerText = "完璧な体幹固定。腹圧がブレず、背骨の軸が一直線にロックされています。";
+        } else {
+            document.getElementById('desc-spine').innerText = "ボトム付近で腹圧が抜け、背中が丸まるか腰が反っています。固定を意識。";
+        }
+
+        analyticsReport.style.display = "block";
+        statusBox.innerText = "分析サマリー表示中";
+        statusBox.className = "status-perfect";
+    }
+
+    function closeReport() {
+        analyticsReport.style.display = "none";
+        switchMode();
+    }
+
     const pose = new Pose({locateFile: (file) => { return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`; }});
     pose.setOptions({ modelComplexity: 0, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
     pose.onResults(onResults);
 
     async function startCamera() {
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+
         const constraints = {
-            video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 640 } },
-            audio: false
+            audio: false,
+            video: { width: { ideal: 480 }, height: { ideal: 640 } }
         };
+
+        if (videoDevices.length > 0) {
+            constraints.video.deviceId = { exact: videoDevices[currentDeviceIdx].deviceId };
+        } else {
+            constraints.video.facingMode = "user";
+        }
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            videoElement.srcObject = stream;
+            currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoElement.srcObject = currentStream;
+            
+            if (videoDevices.length === 0) {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const uniqueDevices = [];
+                const maps = new Set();
+                for (let d of devices) {
+                    if (d.kind === 'videoinput' && !maps.has(d.label)) {
+                        maps.add(d.label);
+                        uniqueDevices.push(d);
+                    }
+                }
+                videoDevices = uniqueDevices;
+            }
+
             videoElement.addEventListener('loadedmetadata', () => {
                 videoElement.play();
                 updateCameraTransform(); 
                 setTimeout(processVideo, 75);
+                statusBox.innerText = "モードを選択して開始してください";
             });
         } catch (err) {
-            statusBox.innerText = "CAMERA ERROR";
+            if (constraints.video.deviceId) {
+                videoDevices = [];
+                currentDeviceIdx = 0;
+            }
+            statusBox.innerText = "カメラ起動エラー。再読み込みしてください";
         }
+    }
+
+    async function switchCamera() {
+        if (videoDevices.length <= 1) {
+            statusBox.innerText = "切り替え可能な予備レンズがありません";
+            return;
+        }
+        currentDeviceIdx = (currentDeviceIdx + 1) % videoDevices.length;
+        await startCamera();
     }
 
     async function processVideo() {
