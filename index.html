@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Posture OS v7.5</title>
+    <title>Posture OS v8.5</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,11 +19,17 @@
         video, canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; transform-origin: center center; transition: transform 0.1s ease; }
         canvas { z-index: 2; }
         
+        #grid-screen { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 2; pointer-events: none; display: none; }
+        .grid-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: rgba(0, 230, 118, 0.45); box-shadow: 0 0 4px rgba(0, 230, 118, 0.5); }
+        .grid-v { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: rgba(0, 230, 118, 0.45); box-shadow: 0 0 4px rgba(0, 230, 118, 0.5); }
+
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 40px 20px 20px 20px; box-sizing: border-box; }
         #header { text-align: center; background: rgba(0, 0, 0, 0.85); padding: 12px; border-radius: 12px; border: 1px solid #222; }
-        h1 { margin: 0; font-size: 18px; letter-spacing: 3px; color: #fff; }
-        .subtitle { font-size: 9px; color: #00e676; margin-top: 3px; font-weight: bold; }
+        h1 { margin: 0; font-size: 18px; letter-spacing: 3px; color: #fff; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .subtitle { font-size: 9px; color: #00e676; margin-top: 3px; font-weight: bold; letter-spacing: 1px; }
         
+        #cam-angle-badge { font-size: 10px; background: #222; padding: 2px 8px; border-radius: 20px; border: 1px solid #444; color: #aaa; font-weight: normal; letter-spacing: 0; }
+
         #control-panel { background: rgba(0, 0, 0, 0.9); padding: 15px; border-radius: 14px; border: 1px solid #333; pointer-events: auto; display: flex; flex-direction: column; gap: 10px; }
         .row { display: flex; gap: 6px; justify-content: space-between; align-items: center; width: 100%; }
         select { background: #111; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; font-size: 11px; width: 38%; box-sizing: border-box; }
@@ -31,11 +37,12 @@
         .btn-scan { background: #00b0ff; color: white; }
         .btn-home { background: #444; color: white; width: 20%; font-size: 11px; }
         
-        .adj-box { display: flex; background: #111; padding: 8px; border-radius: 8px; border: 1px solid #333; gap: 6px; align-items: center; width: 100%; box-sizing: border-box; }
+        .adj-box { display: flex; background: #111; padding: 8px; border-radius: 8px; border: 1px solid #333; gap: 5px; align-items: center; width: 100%; box-sizing: border-box; }
         .adj-label { font-size: 10px; color: #aaa; white-space: nowrap; }
-        .slider { flex-grow: 1; -webkit-appearance: none; background: #333; height: 6px; border-radius: 3px; width: 30%; }
+        .slider { flex-grow: 1; -webkit-appearance: none; background: #333; height: 6px; border-radius: 3px; width: 20%; }
         .slider::-webkit-slider-thumb { -webkit-appearance: none; background: #00e676; width: 16px; height: 16px; border-radius: 50%; }
-        .btn-toggle { background: #333; color: white; width: auto; padding: 6px 8px; font-size: 10px; border: 1px solid #555; border-radius: 6px; white-space: nowrap; }
+        .btn-toggle { background: #333; color: white; width: auto; padding: 6px 6px; font-size: 10px; border: 1px solid #555; border-radius: 6px; white-space: nowrap; }
+        .btn-grid-active { background: #00e676; color: black; border-color: #00e676; }
         .btn-cam-switch { background: #00b0ff; color: white; border: 1px solid #00b0ff; }
         
         #overlay-display { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); z-index: 4; font-size: 70px; font-weight: 900; text-align: center; text-shadow: 0 0 25px rgba(0,0,0,1); pointer-events: none; display: none; }
@@ -68,6 +75,8 @@
     <video id="video" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
     
+    <div id="grid-screen"><div class="grid-h"></div><div class="grid-v"></div></div>
+    
     <div id="overlay-display">10</div>
     <div id="big-alert">WARNING<br>重心軸ブレ！</div>
 
@@ -94,8 +103,8 @@
     
     <div id="ui-layer">
         <div id="header">
-            <h1>HUMAN POSTURE OS</h1>
-            <div class="subtitle">HYPER ENGINE v7.5</div>
+            <h1>POSTURE OS <span id="cam-angle-badge">カメラ初期化中</span></h1>
+            <div class="subtitle">ALIGNMENT ENGINE v8.5</div>
         </div>
         
         <div id="control-panel">
@@ -103,7 +112,8 @@
                 <span class="adj-label">倍率</span>
                 <input type="range" id="zoom-slider" class="slider" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateCameraTransform()">
                 <button class="btn-toggle" id="mirror-btn" onclick="toggleMirror()">反転</button>
-                <button class="btn-toggle btn-cam-switch" id="cam-btn" onclick="switchCamera()">レンズ切替</button>
+                <button class="btn-toggle" id="grid-btn" onclick="toggleGrid()">ガイド線</button>
+                <button class="btn-toggle btn-cam-switch" id="cam-btn" onclick="switchCamera()">レンズ</button>
             </div>
             
             <div class="row">
@@ -139,6 +149,9 @@
     const modeSelect = document.getElementById('mode-select');
     const actionBtn = document.getElementById('action-btn');
     const zoomSlider = document.getElementById('zoom-slider');
+    const gridScreen = document.getElementById('grid-screen');
+    const gridBtn = document.getElementById('grid-btn');
+    const camAngleBadge = document.getElementById('cam-angle-badge');
     
     const mCog = document.getElementById('m-cog');
     const tCog = document.getElementById('t-cog');
@@ -154,6 +167,7 @@
     let isAiProcessing = false; 
     let isMirrored = false; 
     let zoomScale = 1.0;
+    let showGrid = false;
 
     let videoDevices = [];
     let currentDeviceIdx = 0;
@@ -162,13 +176,13 @@
     let currentRepHistory = [];
     let allRepsSummary = [];
 
-    // 【現場最適化】母指球中心軸（JUMPポジション）の許容範囲を0.35〜0.65に大幅拡大して誤爆を完全防止
-    let activeTarget = { cogMin: 0.35, cogMax: 0.65, label: "0.35 - 0.65" };
+    // 【極限緩和】母指球中心軸（JUMPポジション）のストライクゾーンを 0.25 〜 0.75 まで爆広げて超マイルド化
+    let activeTarget = { cogMin: 0.25, cogMax: 0.75, label: "0.25 - 0.75" };
 
     const presets = {
-        hip: { name: "ヒップアップ", cogMin: 0.32, cogMax: 0.48, label: "0.32 - 0.48" },
-        bulk: { name: "レッグバルクアップ", cogMin: 0.52, cogMax: 0.68, label: "0.52 - 0.68" },
-        athlete: { name: "アスリート", cogMin: 0.35, cogMax: 0.65, label: "0.35 - 0.65" }
+        hip: { name: "ヒップアップ", cogMin: 0.25, cogMax: 0.55, label: "0.25 - 0.55" },
+        bulk: { name: "レッグバルクアップ", cogMin: 0.45, cogMax: 0.75, label: "0.45 - 0.75" },
+        athlete: { name: "アスリート", cogMin: 0.25, cogMax: 0.75, label: "0.25 - 0.75" }
     };
 
     function updateCameraTransform() {
@@ -178,7 +192,17 @@
         canvasElement.style.transform = `scale(${hFlip * zoomScale}, ${zoomScale})`;
     }
 
-    // 【新設】リフレッシュ一切不要でシステムを完全初期状態へ「確定リセット」する本質関数
+    function toggleGrid() {
+        showGrid = !showGrid;
+        if(showGrid) {
+            gridScreen.style.display = "block";
+            gridBtn.classList.add("btn-grid-active");
+        } else {
+            gridScreen.style.display = "none";
+            gridBtn.classList.remove("btn-grid-active");
+        }
+    }
+
     function resetToHome() {
         appState = "idle";
         repCount = 0;
@@ -289,6 +313,21 @@
             const rawHeel = results.poseLandmarks[30];
             const rawToe = results.poseLandmarks[32];
 
+            const lSh = results.poseLandmarks[11];
+            const rSh = results.poseLandmarks[12];
+            if (lSh && rSh && lSh.visibility > 0.5 && rSh.visibility > 0.5) {
+                const cameraTilt = Math.abs(lSh.y - rSh.y);
+                if (cameraTilt > 0.035) {
+                    camAngleBadge.innerText = "※カメラ傾きあり";
+                    camAngleBadge.style.color = "#ff1744";
+                    camAngleBadge.style.borderColor = "#ff1744";
+                } else {
+                    camAngleBadge.innerText = "カメラ水平OK";
+                    camAngleBadge.style.color = "#00e676";
+                    camAngleBadge.style.borderColor = "#00e676";
+                }
+            }
+
             if (shoulder.visibility > 0.5 && hip.visibility > 0.5 && knee.visibility > 0.5) {
                 
                 const ankle = (rawAnkle && rawAnkle.visibility > 0.3) ? rawAnkle : { x: knee.x, y: knee.y + (hip.y - shoulder.y) * 0.5 };
@@ -328,28 +367,24 @@
                 mAnkle.innerText = isNotHeelWeighted ? "つま先重心" : "かかと脱落";
                 mAnkle.style.color = isNotHeelWeighted ? "#00e676" : "#ff1744";
 
-                // 拡大された高精度マイルド・ターゲット（0.35〜0.65）
-                const isCogOnBallOfFoot = currentRatio >= 0.35 && currentRatio <= 0.65;
+                // 【マイルドチューニング】母指球ロックの判定を 0.25 〜 0.75 へ超大幅緩和
+                const isCogOnBallOfFoot = currentRatio >= 0.25 && currentRatio <= 0.75;
 
                 if (appState === "scanning") {
-                    
-                    // 【改善】リアルタイム中の警告トリガーを大幅に緩和。本当に大崩れした時だけ作動
                     if (torsoAngle < 150 && !isCogOnBallOfFoot) {
                         bigAlert.innerHTML = "WARNING<br>重心が極端にブレています！";
                         bigAlert.style.display = "block";
-                        canvasCtx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                        canvasCtx.fillStyle = "rgba(255, 0, 0, 0.12)";
                         canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
-                    } else if (torsoAngle < 150 && hipHingeScore < 40) {
+                    } else if (torsoAngle < 150 && hipHingeScore < 30) {
                         bigAlert.innerHTML = "WARNING<br>膝が出すぎています！";
                         bigAlert.style.display = "block";
-                        canvasCtx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                        canvasCtx.fillStyle = "rgba(255, 0, 0, 0.12)";
                         canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
                     } else {
                         bigAlert.style.display = "none";
                     }
 
-                    // 【究極の改善：ピコピコ超高感度エンジン】
-                    // わずかでも股関節が折れたら（158度以下）即座にボトムカウント開始
                     if (torsoAngle < 158) { 
                         isBottomZone = true;
                         currentRepHistory.push({
@@ -359,7 +394,6 @@
                             isBall: isCogOnBallOfFoot
                         });
                     } 
-                    // わずかでも元の位置の近くに戻ったら（165度以上）即レップ確定
                     else if (torsoAngle > 165 && isBottomZone) { 
                         isBottomZone = false;
                         repCount++;
@@ -370,7 +404,8 @@
                             let minSpine = Math.min(...currentRepHistory.map(d => d.spine));
                             let minHinge = Math.min(...currentRepHistory.map(d => d.hinge));
 
-                            let cogScore = Math.max(0, 100 - Math.abs(avgCog - 0.50) * 300); 
+                            // スコア減点係数も300➔200に引き下げ、多少のブレでは高得点を維持するマイルド仕様に
+                            let cogScore = Math.max(0, 100 - Math.abs(avgCog - 0.50) * 200); 
                             let spineScore = minSpine > 140 ? 100 : 50;
                             let finalRepScore = Math.round((cogScore * 0.4) + (spineScore * 0.3) + (minHinge * 0.3));
 
@@ -395,7 +430,7 @@
                 else if (appState === "active") {
                     if (torsoAngle < 154) { 
                         const isMatchPreset = currentRatio >= activeTarget.cogMin && currentRatio <= activeTarget.cogMax;
-                        if (isMatchPreset && isSpineOk && isNotHeelWeighted && hipHingeScore > 50) {
+                        if (isMatchPreset && isSpineOk && isNotHeelWeighted && hipHingeScore > 40) {
                             statusBox.innerText = "PERFECT: JUMP BALANCEロック";
                             statusBox.className = "status-perfect";
                             bigAlert.style.display = "none"; 
@@ -404,7 +439,7 @@
                             statusBox.className = "status-error";
                             bigAlert.innerHTML = "WARNING<br>JUMPバランス崩れ！";
                             bigAlert.style.display = "block";
-                            canvasCtx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                            canvasCtx.fillStyle = "rgba(255, 0, 0, 0.12)";
                             canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
                         }
                     } else {
@@ -429,21 +464,21 @@
         document.getElementById('score-hinge').innerText = `${Math.round(bestRep.hinge)}点`;
         document.getElementById('score-spine').innerText = `${Math.round(bestRep.spine)}点`;
 
-        if (bestRep.cog >= 80) {
+        if (bestRep.cog >= 75) {
             document.getElementById('desc-cog').innerText = "極上。重心の軸がブレずに「母指球」へ完全ロック。最も高くJUMPできる本物の欧米式バランスです。";
-        } else if (bestRep.rawCog > 0.65) {
+        } else if (bestRep.rawCog > 0.75) {
             document.getElementById('desc-cog').innerText = "かかと側に軸が落ち、JUMPの爆発力が殺されています。つま先寄りの母指球で地球を捉えて。";
         } else {
             document.getElementById('desc-cog').innerText = "つま先を攻めすぎて前方に突っ込んでいます。母指球の上で軸を垂直にキープ。";
         }
 
-        if (bestRep.hinge >= 80) {
+        if (bestRep.hinge >= 75) {
             document.getElementById('desc-hinge').innerText = "素晴らしいヒンジ。膝を前に出さず、骨盤主動で前後バランスを精密に維持できています。";
         } else {
             document.getElementById('desc-hinge').innerText = "膝主導（日本式）の悪いフォームです。しゃがむ初動で骨盤を引き、母指球の真上で上下して。";
         }
 
-        if (bestRep.spine >= 80) {
+        if (bestRep.spine >= 75) {
             document.getElementById('desc-spine').innerText = "完璧な体幹ロック。腹圧が一切抜けず、強烈なパワーを受け止める剛性が完成しています。";
         } else {
             document.getElementById('desc-spine').innerText = "ボトムで腹圧が抜け、軸が潰れています。セット中、常に腹圧をキープ。";
