@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Posture OS v8.5</title>
+    <title>Posture OS v9.0</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -35,6 +35,7 @@
         select { background: #111; color: white; border: 1px solid #444; padding: 10px; border-radius: 8px; font-size: 11px; width: 38%; box-sizing: border-box; }
         button { background: #00e676; color: black; border: none; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 11px; width: 38%; cursor: pointer; text-align: center; box-sizing: border-box; }
         .btn-scan { background: #00b0ff; color: white; }
+        .btn-student { background: #e040fb; color: white; } /* 生徒用特別カラー */
         .btn-home { background: #444; color: white; width: 20%; font-size: 11px; }
         
         .adj-box { display: flex; background: #111; padding: 8px; border-radius: 8px; border: 1px solid #333; gap: 5px; align-items: center; width: 100%; box-sizing: border-box; }
@@ -81,10 +82,10 @@
     <div id="big-alert">WARNING<br>重心軸ブレ！</div>
 
     <div id="analytics-report">
-        <div class="report-title">KITAJIMA JUMP REPORT</div>
+        <div id="report-main-title" class="report-title">KITAJIMA JUMP REPORT</div>
         <div class="best-rep-box">
-            <span>BEST JUMP SQUAT: </span><span id="rep-best-num" class="best-rep-num">第 - レップ</span>
-            <div style="font-size: 11px; color: #aaa; margin-top: 3px;">欧米式JUMP適合率: <b id="rep-best-score" style="color:#00e676;">-%</b></div>
+            <span id="report-meta-label">BEST JUMP SQUAT: </span><span id="rep-best-num" class="best-rep-num">第 - レップ</span>
+            <div style="font-size: 11px; color: #aaa; margin-top: 3px;"><span id="report-score-label">欧米式JUMP適合率:</span> <b id="rep-best-score" style="color:#00e676;">-%</b></div>
         </div>
         <div class="feedback-item">
             <div class="feedback-label"><span>① 母指球ロック (重心軸)</span><span id="score-cog" style="color:#00e676;">-%</span></div>
@@ -104,7 +105,7 @@
     <div id="ui-layer">
         <div id="header">
             <h1>POSTURE OS <span id="cam-angle-badge">カメラ初期化中</span></h1>
-            <div class="subtitle">ALIGNMENT ENGINE v8.5</div>
+            <div class="subtitle">CROSS ENGINE v9.0</div>
         </div>
         
         <div id="control-panel">
@@ -118,12 +119,12 @@
             
             <div class="row">
                 <select id="mode-select" onchange="switchMode()">
-                    <option value="custom">カスタム（5レップ分析）</option>
+                    <option value="custom">カスタム（師弟シンクロ）</option>
                     <option value="hip">簡単：ヒップアップ</option>
                     <option value="bulk">簡単：レッグバルクアップ</option>
                     <option value="athlete">簡単：アスリート</option>
                 </select>
-                <button id="action-btn" class="btn-scan" onclick="startScanSequence()">分析開始</button>
+                <button id="action-btn" class="btn-scan" onclick="handleActionClick()">【1】トレーナーお手本記録</button>
                 <button id="home-btn" class="btn-home" onclick="resetToHome()">ホーム</button>
             </div>
         </div>
@@ -158,12 +159,13 @@
     const mSpine = document.getElementById('m-spine');
     const mAnkle = document.getElementById('m-ankle');
 
+    // 【本質】新ステータス管理ロジック
+    // idle / countdown_trainer / scanning_trainer / trainer_ready / countdown_student / scanning_student
     let appState = "idle"; 
     let currentMode = "custom";
     let countdownValue = 10;
     let repCount = 0;
     let isBottomZone = false;
-    let scalledDataSamples = [];
     let isAiProcessing = false; 
     let isMirrored = false; 
     let zoomScale = 1.0;
@@ -176,7 +178,8 @@
     let currentRepHistory = [];
     let allRepsSummary = [];
 
-    // 【極限緩和】母指球中心軸（JUMPポジション）のストライクゾーンを 0.25 〜 0.75 まで爆広げて超マイルド化
+    // カスタム用・記憶されたトレーナーお手本データ
+    let savedTrainerCog = 0.50; 
     let activeTarget = { cogMin: 0.25, cogMax: 0.75, label: "0.25 - 0.75" };
 
     const presets = {
@@ -209,19 +212,20 @@
         isBottomZone = false;
         currentRepHistory = [];
         allRepsSummary = [];
-        scalledDataSamples = [];
+        savedTrainerCog = 0.50;
         
         bigAlert.style.display = "none";
         analyticsReport.style.display = "none";
         overlayDisplay.style.display = "none";
         
-        actionBtn.innerText = "分析開始";
-        actionBtn.className = "btn-scan";
         modeSelect.value = "custom";
         currentMode = "custom";
         tCog.innerText = "未設定";
-        statusBox.innerText = "モードを選択して開始してください";
+        statusBox.innerText = "トレーナーのお手本を記憶させてから生徒が挑戦するモードです";
         statusBox.className = "";
+        
+        actionBtn.innerText = "【1】トレーナーお手本記録";
+        actionBtn.className = "btn-scan";
         
         mCog.innerText = "-";
         mSpine.innerText = "-";
@@ -244,39 +248,51 @@
         currentMode = modeSelect.value;
         analyticsReport.style.display = "none";
         bigAlert.style.display = "none";
+        repCount = 0;
+        isBottomZone = false;
+
         if (currentMode === "custom") {
-            actionBtn.innerText = "分析開始";
+            appState = "idle";
+            actionBtn.innerText = "【1】トレーナーお手本記録";
             actionBtn.className = "btn-scan";
             tCog.innerText = "未設定";
-            statusBox.innerText = "5レップ母指球ロック解析。JUMP最適バランスをジャッジします";
+            statusBox.innerText = "プロのフォームをAIにインプットします。【1】を押してください";
             statusBox.className = "";
-            appState = "idle";
         } else {
-            actionBtn.innerText = "システム稼働中";
-            actionBtn.className = "";
+            appState = "idle";
+            actionBtn.innerText = "簡単分析スタート";
+            actionBtn.className = "btn-scan";
             activeTarget = presets[currentMode];
             tCog.innerText = presets[currentMode].label;
-            statusBox.innerText = `簡単設定：【${presets[currentMode].name}】監視中`;
+            statusBox.innerText = `プリセット設定：【${presets[currentMode].name}】5レップ分析を行います`;
             statusBox.className = "status-perfect";
-            appState = "active";
         }
     }
 
-    function startScanSequence() {
-        if (currentMode !== "custom" || appState === "countdown" || appState === "scanning") return;
-        appState = "countdown";
+    // 中央アクションボタンの一元管理
+    function handleActionClick() {
+        if (currentMode === "custom") {
+            if (appState === "idle") {
+                startTrainerSequence();
+            } else if (appState === "trainer_ready") {
+                startStudentSequence();
+            }
+        } else {
+            if (appState === "idle") {
+                startEasySequence();
+            }
+        }
+    }
+
+    // 1. トレーナーお手本記録シークエンス
+    function startTrainerSequence() {
+        appState = "countdown_trainer";
         countdownValue = 10;
-        repCount = 0;
-        scalledDataSamples = [];
-        allRepsSummary = [];
-        currentRepHistory = [];
         overlayDisplay.innerText = countdownValue;
         overlayDisplay.style.display = "block";
         overlayDisplay.style.color = "#00b0ff";
-        statusBox.innerText = "母指球に重心をロックし、JUMPのセットアップをしてください";
+        statusBox.innerText = "【トレーナー用】母指球をロックしてお手本の準備をしてください";
         statusBox.className = "status-scanning";
-        bigAlert.style.display = "none";
-        analyticsReport.style.display = "none";
         
         const timer = setInterval(() => {
             countdownValue--;
@@ -285,8 +301,67 @@
             } else if (countdownValue === 0) {
                 overlayDisplay.innerText = "START";
                 overlayDisplay.style.color = "#00e676";
-                statusBox.innerText = "JUMPエンジン稼働！反復運動を感知します";
-                appState = "scanning";
+                statusBox.innerText = "【トレーナーお手本記録中】スクワットを5レップ行ってください";
+                appState = "scanning_trainer";
+                scalledDataSamples = [];
+            } else {
+                clearInterval(timer);
+                overlayDisplay.innerText = "REP 0";
+            }
+        }, 1000);
+    }
+
+    // 2. 生徒挑戦シークエンス（カスタムのステップ2）
+    function startStudentSequence() {
+        appState = "countdown_student";
+        countdownValue = 10;
+        repCount = 0;
+        allRepsSummary = [];
+        currentRepHistory = [];
+        overlayDisplay.innerText = countdownValue;
+        overlayDisplay.style.display = "block";
+        overlayDisplay.style.color = "#e040fb";
+        statusBox.innerText = "【生徒用】交代完了を確認。カウントダウン後にスタートします";
+        statusBox.className = "status-scanning";
+        
+        const timer = setInterval(() => {
+            countdownValue--;
+            if (countdownValue > 0) {
+                overlayDisplay.innerText = countdownValue;
+            } else if (countdownValue === 0) {
+                overlayDisplay.innerText = "START";
+                overlayDisplay.style.color = "#00e676";
+                statusBox.innerText = "【生徒スキャン中】トレーナーの軸をトレースして5レップ行ってください";
+                appState = "scanning_student";
+            } else {
+                clearInterval(timer);
+                overlayDisplay.innerText = "REP 0";
+            }
+        }, 1000);
+    }
+
+    // 3. 簡単モード分析シークエンス
+    function startEasySequence() {
+        appState = "countdown_student"; // 簡単モードも生徒側と共通スキャン
+        countdownValue = 10;
+        repCount = 0;
+        allRepsSummary = [];
+        currentRepHistory = [];
+        overlayDisplay.innerText = countdownValue;
+        overlayDisplay.style.display = "block";
+        overlayDisplay.style.color = "#00b0ff";
+        statusBox.innerText = "分析準備。カウントダウン後にスクワットを開始してください";
+        statusBox.className = "status-scanning";
+        
+        const timer = setInterval(() => {
+            countdownValue--;
+            if (countdownValue > 0) {
+                overlayDisplay.innerText = countdownValue;
+            } else if (countdownValue === 0) {
+                overlayDisplay.innerText = "START";
+                overlayDisplay.style.color = "#00e676";
+                statusBox.innerText = "【簡単スキャン中】5レップ分析を行います。終了後にレポートが出ます";
+                appState = "scanning_student";
             } else {
                 clearInterval(timer);
                 overlayDisplay.innerText = "REP 0";
@@ -367,12 +442,41 @@
                 mAnkle.innerText = isNotHeelWeighted ? "つま先重心" : "かかと脱落";
                 mAnkle.style.color = isNotHeelWeighted ? "#00e676" : "#ff1744";
 
-                // 【マイルドチューニング】母指球ロックの判定を 0.25 〜 0.75 へ超大幅緩和
-                const isCogOnBallOfFoot = currentRatio >= 0.25 && currentRatio <= 0.75;
+                // ジャッジ基準の分岐（カスタム生徒用ならトレーナー基準、簡単ならプリセット基準）
+                let currentMin = currentMode === "custom" ? (savedTrainerCog - 0.20) : activeTarget.cogMin;
+                let currentMax = currentMode === "custom" ? (savedTrainerCog + 0.20) : activeTarget.cogMax;
+                const isCogOk = currentRatio >= currentMin && currentRatio <= currentMax;
 
-                if (appState === "scanning") {
-                    if (torsoAngle < 150 && !isCogOnBallOfFoot) {
-                        bigAlert.innerHTML = "WARNING<br>重心が極端にブレています！";
+                // 【本質】状態別のAIジャッジ分岐ロジック
+                
+                // A. トレーナーの記憶フェーズ
+                if (appState === "scanning_trainer") {
+                    if (torsoAngle < 158) {
+                        isBottomZone = true;
+                        scalledDataSamples.push(currentRatio); // トレーナーの軸データを蓄積
+                    } else if (torsoAngle > 165 && isBottomZone) {
+                        isBottomZone = false;
+                        repCount++;
+                        overlayDisplay.innerText = "お手本 " + repCount;
+
+                        if (repCount >= 5) {
+                            if (scalledDataSamples.length > 0) {
+                                savedTrainerCog = scalledDataSamples.reduce((a, b) => a + b, 0) / scalledDataSamples.length;
+                                tCog.innerText = `${(savedTrainerCog - 0.20).toFixed(2)}-${(savedTrainerCog + 0.20).toFixed(2)}`;
+                            }
+                            appState = "trainer_ready";
+                            overlayDisplay.style.display = "none";
+                            statusBox.innerText = "トレーナーの軸を記憶完了！生徒に交代し【2】を押してください";
+                            statusBox.className = "status-perfect";
+                            actionBtn.innerText = "【2】生徒スキャン開始";
+                            actionBtn.className = "btn-student"; // 色を紫へ変更して交代を視覚化
+                        }
+                    }
+                }
+                // B. 生徒（または簡単モード）のスキャンフェーズ
+                else if (appState === "scanning_student") {
+                    if (torsoAngle < 150 && !isCogOk) {
+                        bigAlert.innerHTML = currentMode === "custom" ? "WARNING<br>トレーナーの軸からブレています！" : "WARNING<br>重心が極端にブレています！";
                         bigAlert.style.display = "block";
                         canvasCtx.fillStyle = "rgba(255, 0, 0, 0.12)";
                         canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
@@ -391,7 +495,7 @@
                             cog: currentRatio,
                             spine: spineLine,
                             hinge: hipHingeScore,
-                            isBall: isCogOnBallOfFoot
+                            isBall: isCogOk
                         });
                     } 
                     else if (torsoAngle > 165 && isBottomZone) { 
@@ -404,8 +508,9 @@
                             let minSpine = Math.min(...currentRepHistory.map(d => d.spine));
                             let minHinge = Math.min(...currentRepHistory.map(d => d.hinge));
 
-                            // スコア減点係数も300➔200に引き下げ、多少のブレでは高得点を維持するマイルド仕様に
-                            let cogScore = Math.max(0, 100 - Math.abs(avgCog - 0.50) * 200); 
+                            // 適合率の算出ベース（カスタムならトレーナーの数値、簡単なら0.50）
+                            let baseTarget = currentMode === "custom" ? savedTrainerCog : 0.50;
+                            let cogScore = Math.max(0, 100 - Math.abs(avgCog - baseTarget) * 200); 
                             let spineScore = minSpine > 140 ? 100 : 50;
                             let finalRepScore = Math.round((cogScore * 0.4) + (spineScore * 0.3) + (minHinge * 0.3));
 
@@ -426,27 +531,6 @@
                             showAnalyticsReport();
                         }
                     }
-                } 
-                else if (appState === "active") {
-                    if (torsoAngle < 154) { 
-                        const isMatchPreset = currentRatio >= activeTarget.cogMin && currentRatio <= activeTarget.cogMax;
-                        if (isMatchPreset && isSpineOk && isNotHeelWeighted && hipHingeScore > 40) {
-                            statusBox.innerText = "PERFECT: JUMP BALANCEロック";
-                            statusBox.className = "status-perfect";
-                            bigAlert.style.display = "none"; 
-                        } else {
-                            statusBox.innerText = "WARNING: 軸バランス崩れ";
-                            statusBox.className = "status-error";
-                            bigAlert.innerHTML = "WARNING<br>JUMPバランス崩れ！";
-                            bigAlert.style.display = "block";
-                            canvasCtx.fillStyle = "rgba(255, 0, 0, 0.12)";
-                            canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
-                        }
-                    } else {
-                        statusBox.innerText = "SQUAT DOWN...";
-                        statusBox.className = "";
-                        bigAlert.style.display = "none";
-                    }
                 }
             }
         }
@@ -457,6 +541,17 @@
         if (allRepsSummary.length === 0) return;
         let bestRep = allRepsSummary.reduce((max, rep) => rep.score > max.score ? rep : max, allRepsSummary[0]);
         
+        // テキストの動的書き換え（カスタムか簡単かでタイトルを変更）
+        if (currentMode === "custom") {
+            document.getElementById('report-main-title').innerText = "TRAINER SYNCHRO REPORT";
+            document.getElementById('report-meta-label').innerText = "BEST MATCH REP: ";
+            document.getElementById('report-score-label').innerText = "トレーナー適合率:";
+        } else {
+            document.getElementById('report-main-title').innerText = "KITAJIMA JUMP REPORT";
+            document.getElementById('report-meta-label').innerText = "BEST JUMP SQUAT: ";
+            document.getElementById('report-score-label').innerText = "欧米式JUMP適合率:";
+        }
+
         document.getElementById('rep-best-num').innerText = `第 ${bestRep.repNum} レップ`;
         document.getElementById('rep-best-score').innerText = `${bestRep.score}点`;
         
@@ -464,28 +559,38 @@
         document.getElementById('score-hinge').innerText = `${Math.round(bestRep.hinge)}点`;
         document.getElementById('score-spine').innerText = `${Math.round(bestRep.spine)}点`;
 
-        if (bestRep.cog >= 75) {
-            document.getElementById('desc-cog').innerText = "極上。重心の軸がブレずに「母指球」へ完全ロック。最も高くJUMPできる本物の欧米式バランスです。";
-        } else if (bestRep.rawCog > 0.75) {
-            document.getElementById('desc-cog').innerText = "かかと側に軸が落ち、JUMPの爆発力が殺されています。つま先寄りの母指球で地球を捉えて。";
+        // 重心軸フィードバックのパーソナライズ
+        if (currentMode === "custom") {
+            if (bestRep.cog >= 80) {
+                document.getElementById('desc-cog').innerText = "完璧。トレーナーが作った母指球の絶対軸と完全にシンクロしています。極上のフォームです。";
+            } else {
+                document.getElementById('desc-cog').innerText = "トレーナーの重心軸から前後へのズレを検知。お手本動画の母指球の位置を再確認してください。";
+            }
         } else {
-            document.getElementById('desc-cog').innerText = "つま先を攻めすぎて前方に突っ込んでいます。母指球の上で軸を垂直にキープ。";
+            if (bestRep.cog >= 80) {
+                document.getElementById('desc-cog').innerText = "極上。重心の軸がブレずに「母指球」へ完全ロック。最も高くJUMPできる本物の欧米式バランスです。";
+            } else if (bestRep.rawCog > 0.65) {
+                document.getElementById('desc-cog').innerText = "かかと側に軸が落ち、JUMPの爆発力が殺されています。つま先寄りの母指球で地球を捉えて。";
+            } else {
+                document.getElementById('desc-cog').innerText = "つま先を攻めすぎて前方に突っ込んでいます。母指球の上で軸を垂直にキープ。";
+            }
         }
 
-        if (bestRep.hinge >= 75) {
+        // ヒンジ・腹圧フィードバック
+        if (bestRep.hinge >= 80) {
             document.getElementById('desc-hinge').innerText = "素晴らしいヒンジ。膝を前に出さず、骨盤主動で前後バランスを精密に維持できています。";
         } else {
             document.getElementById('desc-hinge').innerText = "膝主導（日本式）の悪いフォームです。しゃがむ初動で骨盤を引き、母指球の真上で上下して。";
         }
 
-        if (bestRep.spine >= 75) {
+        if (bestRep.spine >= 80) {
             document.getElementById('desc-spine').innerText = "完璧な体幹ロック。腹圧が一切抜けず、強烈なパワーを受け止める剛性が完成しています。";
         } else {
             document.getElementById('desc-spine').innerText = "ボトムで腹圧が抜け、軸が潰れています。セット中、常に腹圧をキープ。";
         }
 
         analyticsReport.style.display = "block";
-        statusBox.innerText = "JUMP解析完了";
+        statusBox.innerText = "解析完了。データを確定させてください";
         statusBox.className = "status-perfect";
     }
 
@@ -530,7 +635,7 @@
                 videoElement.play();
                 updateCameraTransform(); 
                 setTimeout(processVideo, 75);
-                statusBox.innerText = "モードを選択して開始してください";
+                statusBox.innerText = "トレーナーのお手本を記憶させてから生徒が挑戦するモードです";
             });
         } catch (err) {
             if (constraints.video.deviceId) {
@@ -555,7 +660,7 @@
             setTimeout(processVideo, 100);
             return;
         }
-        if (appState === "countdown") {
+        if (appState.includes("countdown")) {
             setTimeout(processVideo, 75);
             return;
         }
